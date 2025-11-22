@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>Restaurant Billing System</title>
+    <meta name="description" content="Simple and visual restaurant billing system with image-based menu selection">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="reports-styles.css">
+    <!-- QR Code Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🍽️ Jafar Fastfood</h1>
+            <p class="subtitle">Simple & Easy Billing System</p>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="nav-tabs">
+            <button class="nav-tab active" data-tab="billing">
+                <span class="tab-icon">💳</span>
+                <span>New Bill</span>
+            </button>
+            <button class="nav-tab" data-tab="menu">
+                <span class="tab-icon">📋</span>
+                <span>Manage Menu</span>
+            </button>
+            <button class="nav-tab" data-tab="history">
+                <span class="tab-icon">📜</span>
+                <span>Bill History</span>
+            </button>
+            <button class="nav-tab" data-tab="reports">
+                <span class="tab-icon">📊</span>
+                <span>Reports</span>
+            </button>
+        </nav>
+
+        <!-- Billing Section -->
+        <section id="billing-section" class="tab-content active">
+            <div class="billing-layout">
+                <!-- Menu Items Grid -->
+                <div class="menu-grid-container">
+                    <h2>Select Items</h2>
+                    <div class="category-filter">
+                        <button class="filter-btn active" data-category="all">All Items</button>
+                        <button class="filter-btn" data-category="Main Course">Main Course</button>
+                        <button class="filter-btn" data-category="Soups">Soups</button>
+                        <button class="filter-btn" data-category="Breads">Breads</button>
+                        <button class="filter-btn" data-category="Egg Items">Egg Items</button>
+                    </div>
+                    <div id="menu-grid" class="menu-grid">
+                        <!-- Menu items will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Cart -->
+                <div class="cart-container">
+                    <h2>Current Bill</h2>
+                    <div id="cart-items" class="cart-items">
+                        <p class="empty-cart">No items added yet</p>
+                    </div>
+
+                    <!-- Payment Method Selection -->
+                    <div class="payment-method-section">
+                        <h3>Payment Method</h3>
+                        <div class="payment-method-options">
+                            <label class="payment-option">
+                                <input type="radio" name="payment-method" value="cash" checked>
+                                <span class="payment-label">💵 Cash</span>
+                            </label>
+                            <label class="payment-option">
+                                <input type="radio" name="payment-method" value="upi">
+                                <span class="payment-label">📱 UPI</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="cart-total">
+                        <div class="total-row">
+                            <span>Subtotal:</span>
+                            <span id="subtotal">₹0.00</span>
+                        </div>
+                        <div class="total-row">
+                            <span>Tax (5%):</span>
+                            <span id="tax">₹0.00</span>
+                        </div>
+                        <div class="total-row grand-total">
+                            <span>Total:</span>
+                            <span id="total">₹0.00</span>
+                        </div>
+                    </div>
+                    <div class="cart-actions">
+                        <button id="clear-cart-btn" class="btn btn-secondary">Clear All</button>
+                        <button id="save-bill-btn" class="btn btn-primary">📄 Generate Bill</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bill Preview Section (Hidden by default) -->
+            <div id="bill-preview-section" class="bill-preview-section hidden">
+                <div class="bill-preview-container">
+                    <div class="bill-preview-header">
+                        <h2>Bill Preview</h2>
+                        <button id="close-preview-btn" class="btn-close">×</button>
+                    </div>
+
+                    <div class="bill-preview-content">
+                        <!-- Receipt Preview -->
+                        <div class="receipt-preview" id="receipt-preview">
+                            <!-- Bill content will be generated here -->
+                        </div>
+
+                        <!-- QR Code Payment -->
+                        <div class="qr-payment-section">
+                            <h3>Scan to Pay</h3>
+                            <div id="qr-code-container" class="qr-code-container"></div>
+                            <p class="upi-id">UPI ID: 9585437294@ybl</p>
+                            <p class="payment-amount">Amount: <span id="qr-amount">₹0.00</span></p>
+                        </div>
+                    </div>
+
+                    <div class="bill-preview-actions">
+                        <button id="print-preview-btn" class="btn btn-primary">🖨️ Print Bill</button>
+                        <button id="new-bill-btn" class="btn btn-secondary">✓ Confirm & Save</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Menu Management Section -->
+        <section id="menu-section" class="tab-content">
+            <div class="menu-management">
+                <div class="section-header">
+                    <h2>Menu Management</h2>
+                    <button id="add-item-btn" class="btn btn-primary">+ Add New Item</button>
+                </div>
+
+                <!-- Add/Edit Form -->
+                <div id="item-form" class="item-form hidden">
+                    <h3 id="form-title">Add New Item</h3>
+                    <form id="menu-item-form">
+                        <input type="hidden" id="edit-item-id">
+
+                        <div class="form-group">
+                            <label for="item-name">Item Name *</label>
+                            <input type="text" id="item-name" required placeholder="e.g., Chicken Biryani">
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="item-price">Price (₹) *</label>
+                                <input type="number" id="item-price" required min="0" step="0.01" placeholder="0.00">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="item-category">Category *</label>
+                                <select id="item-category" required>
+                                    <option value="">Select Category</option>
+                                    <option value="Main Course">Main Course</option>
+                                    <option value="Soups">Soups</option>
+                                    <option value="Breads">Breads</option>
+                                    <option value="Egg Items">Egg Items</option>
+                                    <option value="Beverages">Beverages</option>
+                                    <option value="Desserts">Desserts</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="item-image">Image URL</label>
+                            <input type="text" id="item-image" placeholder="Enter image URL or leave blank for default">
+                            <small>Tip: You can use sample images like "sample-menu-images/biryani.png"</small>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" id="cancel-form-btn" class="btn btn-secondary">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save Item</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Menu Items List -->
+                <div id="menu-list" class="menu-list">
+                    <!-- Menu items will be loaded here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Bill History Section -->
+        <section id="history-section" class="tab-content">
+            <div class="history-container">
+                <div class="section-header">
+                    <h2>Bill History</h2>
+                    <button id="clear-history-btn" class="btn btn-secondary">Clear History</button>
+                </div>
+                <div id="history-list" class="history-list">
+                    <!-- Bill history will be loaded here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Reports Section -->
+        <section id="reports" class="tab-content">
+            <div class="reports-container">
+                <div class="section-header">
+                    <h2>📊 Sales Reports</h2>
+                </div>
+
+                <!-- Report Filters -->
+                <div class="report-filters">
+                    <div class="filter-group">
+                        <label>Report Type:</label>
+                        <select id="report-type" class="report-select">
+                            <option value="daily">Daily Report</option>
+                            <option value="monthly">Monthly Report</option>
+                            <option value="yearly">Yearly Report</option>
+                            <option value="custom">Custom Range</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group" id="date-range-group">
+                        <label>Date Range:</label>
+                        <div class="date-inputs">
+                            <input type="date" id="start-date" class="date-input">
+                            <span>to</span>
+                            <input type="date" id="end-date" class="date-input">
+                        </div>
+                    </div>
+
+                    <div class="filter-actions">
+                        <button id="generate-report-btn" class="btn btn-primary">📊 Generate Report</button>
+                        <button id="export-excel-btn" class="btn btn-secondary">📥 Export to Excel</button>
+                    </div>
+                </div>
+
+                <!-- Report Summary -->
+                <div id="report-summary" class="report-summary hidden">
+                    <div class="summary-card">
+                        <div class="summary-icon">💰</div>
+                        <div class="summary-content">
+                            <div class="summary-label">Total Sales</div>
+                            <div class="summary-value" id="total-sales">₹0.00</div>
+                        </div>
+                    </div>
+
+                    <div class="summary-card">
+                        <div class="summary-icon">🧾</div>
+                        <div class="summary-content">
+                            <div class="summary-label">Total Bills</div>
+                            <div class="summary-value" id="total-bills">0</div>
+                        </div>
+                    </div>
+
+                    <div class="summary-card">
+                        <div class="summary-icon">💵</div>
+                        <div class="summary-content">
+                            <div class="summary-label">Cash Sales</div>
+                            <div class="summary-value" id="cash-sales">₹0.00</div>
+                        </div>
+                    </div>
+
+                    <div class="summary-card">
+                        <div class="summary-icon">📱</div>
+                        <div class="summary-content">
+                            <div class="summary-label">UPI Sales</div>
+                            <div class="summary-value" id="upi-sales">₹0.00</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Report Table -->
+                <div id="report-table-container" class="report-table-container hidden">
+                    <h3>Detailed Report</h3>
+                    <div class="table-wrapper">
+                        <table id="report-table" class="report-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Bill No.</th>
+                                    <th>Items</th>
+                                    <th>Payment</th>
+                                    <th>Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody id="report-table-body">
+                                <!-- Report data will be inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="no-report-data" class="empty-cart">
+                    Select report type and click "Generate Report" to view sales data
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Print Template (Hidden) -->
+    <div id="print-template" class="print-only">
+        <!-- Bill content for printing -->
+    </div>
+
+    <!-- QR Code Payment Modal -->
+    <div id="qr-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>💳 Payment Details</h2>
+                <button class="modal-close" onclick="app.closeQRModal()">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Bill Summary -->
+                <div class="bill-summary">
+                    <div class="summary-row">
+                        <span>Subtotal:</span>
+                        <span id="modal-subtotal">₹0.00</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Tax (5%):</span>
+                        <span id="modal-tax">₹0.00</span>
+                    </div>
+                    <div class="summary-row total-row">
+                        <span>Total Amount:</span>
+                        <span id="modal-total">₹0.00</span>
+                    </div>
+                </div>
+
+                <!-- Payment Method -->
+                <div class="payment-method-display">
+                    <h3>Payment Method</h3>
+                    <div id="modal-payment-method" class="payment-badge">CASH</div>
+                </div>
+
+                <!-- QR Code Section (shown only for UPI) -->
+                <div id="modal-qr-section" class="qr-section" style="display: none;">
+                    <h3>Scan to Pay</h3>
+                    <div id="modal-qr-code" class="qr-code-container"></div>
+                    <div class="upi-details">
+                        <p><strong>UPI ID:</strong> 9585437294@ybl</p>
+                        <p class="scan-instruction">Scan the QR code with any UPI app</p>
+                    </div>
+                </div>
+
+                <!-- Items List -->
+                <div class="modal-items-list">
+                    <h3>Items</h3>
+                    <div id="modal-items-container"></div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="app.closeQRModal()">Close</button>
+                <button class="btn btn-primary" onclick="app.printFromModal()">🖨️ Print Bill</button>
+                <button class="btn btn-success" onclick="app.confirmPayment()">✓ Confirm & Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Code Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- SheetJS Library for Excel Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="food-images.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>

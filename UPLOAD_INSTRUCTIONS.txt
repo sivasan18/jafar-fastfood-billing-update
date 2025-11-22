@@ -1,0 +1,50 @@
+📤 HOW TO UPLOAD TO GITHUB
+
+All files are ready in this folder!
+
+STEP 1: Create GitHub Repository
+1. Go to: https://github.com/new
+2. Repository name: jafar-fastfood
+3. Make it Public
+4. Don't check any boxes
+5. Click Create repository
+
+STEP 2: Upload Files (Choose one option)
+
+Option A - Upload via GitHub Website (Easiest):
+1. After creating repo, click "uploading an existing file" link
+2. Drag ALL files from this folder
+3. Include the sample-menu-images folder too
+4. Write commit message: "Initial commit"
+5. Click Commit changes
+
+Option B - Use Terminal:
+cd ~/Downloads/jafar-fastfood
+git init
+git add .
+git commit -m "Initial commit"
+git branch -M main
+git remote add origin https://github.com/YOUR_USERNAME/jafar-fastfood.git
+git push -u origin main
+
+STEP 3: Enable GitHub Pages
+1. Go to Settings → Pages
+2. Branch: main
+3. Folder: / (root)
+4. Click Save
+5. Wait 1-2 minutes
+
+STEP 4: Access Your Site
+https://YOUR_USERNAME.github.io/jafar-fastfood/
+
+FILES INCLUDED:
+✅ index.html
+✅ customer-display.html
+✅ app.js
+✅ food-images.js
+✅ style.css (with latest layout fixes)
+✅ reports-styles.css
+✅ sample-menu-images/
+✅ README.md
+
+Total Time: ~5 minutes
