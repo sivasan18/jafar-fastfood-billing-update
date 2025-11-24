@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Display - Jafar Fastfood</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .customer-display {
+            text-align: center;
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .shop-header {
+            margin-bottom: 3rem;
+        }
+
+        .shop-name {
+            font-size: 4rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+
+        .tagline {
+            font-size: 1.5rem;
+            opacity: 0.8;
+        }
+
+        .bill-section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 2rem;
+            padding: 3rem;
+            margin-bottom: 2rem;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .bill-section.hidden {
+            display: none;
+        }
+
+        .total-amount {
+            font-size: 3rem;
+            font-weight: 700;
+            color: #10b981;
+            margin-bottom: 2rem;
+        }
+
+        .payment-method {
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+            padding: 1rem 2rem;
+            background: rgba(99, 102, 241, 0.3);
+            border-radius: 1rem;
+            display: inline-block;
+        }
+
+        .qr-section {
+            background: white;
+            padding: 2rem;
+            border-radius: 1.5rem;
+            display: inline-block;
+            margin: 2rem 0;
+        }
+
+        .qr-section.hidden {
+            display: none;
+        }
+
+        #customer-qr-code {
+            margin: 0 auto;
+        }
+
+        .upi-info {
+            color: #1e293b;
+            font-size: 1.3rem;
+            margin-top: 1rem;
+            font-weight: 600;
+        }
+
+        .scan-instruction {
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            color: #10b981;
+        }
+
+        .waiting-message {
+            font-size: 2rem;
+            opacity: 0.7;
+            padding: 4rem;
+        }
+
+        .item-list {
+            text-align: left;
+            margin-top: 2rem;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 1.5rem;
+            border-radius: 1rem;
+        }
+
+        .item-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            font-size: 1.2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .item-row:last-child {
+            border-bottom: none;
+        }
+
+        .thank-you {
+            font-size: 1.5rem;
+            margin-top: 2rem;
+            opacity: 0.8;
+        }
+    </style>
+    <!-- QR Code Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+
+<body>
+    <div class="customer-display">
+        <div class="shop-header">
+            <div class="shop-name">JAFAR FASTFOOD</div>
+            <div class="tagline">Quality Food & Service</div>
+        </div>
+
+        <div id="waiting-section" class="bill-section">
+            <div class="waiting-message">Preparing your bill...</div>
+        </div>
+
+        <div id="bill-section" class="bill-section hidden">
+            <div class="total-amount">Total: <span id="display-total">₹0.00</span></div>
+
+            <div id="payment-method-display" class="payment-method"></div>
+
+            <div id="qr-display" class="qr-section hidden">
+                <div class="scan-instruction">📱 Scan to Pay</div>
+                <div id="customer-qr-code"></div>
+                <div class="upi-info">UPI: 9585437294@ybl</div>
+            </div>
+
+            <div class="thank-you">Thank you for your visit!</div>
+        </div>
+    </div>
+
+    <script>
+        // Listen for messages from the main billing window
+        window.addEventListener('storage', function (e) {
+            if (e.key === 'customerDisplay') {
+                const data = JSON.parse(e.newValue);
+                updateCustomerDisplay(data);
+            }
+        });
+
+        // Check for existing data on load
+        window.addEventListener('load', function () {
+            const data = localStorage.getItem('customerDisplay');
+            if (data) {
+                updateCustomerDisplay(JSON.parse(data));
+            }
+        });
+
+        function updateCustomerDisplay(data) {
+            const waitingSection = document.getElementById('waiting-section');
+            const billSection = document.getElementById('bill-section');
+            const displayTotal = document.getElementById('display-total');
+            const paymentMethodDisplay = document.getElementById('payment-method-display');
+            const qrDisplay = document.getElementById('qr-display');
+            const qrContainer = document.getElementById('customer-qr-code');
+
+            if (!data || !data.total) {
+                waitingSection.classList.remove('hidden');
+                billSection.classList.add('hidden');
+                return;
+            }
+
+            // Hide waiting, show bill
+            waitingSection.classList.add('hidden');
+            billSection.classList.remove('hidden');
+
+            // Update total
+            displayTotal.textContent = `₹${data.total.toFixed(2)}`;
+
+            // Update payment method
+            const paymentIcon = data.paymentMethod === 'upi' ? '📱' : '💵';
+            const paymentText = data.paymentMethod === 'upi' ? 'UPI Payment' : 'Cash Payment';
+            paymentMethodDisplay.textContent = `${paymentIcon} ${paymentText}`;
+
+            // Show/hide QR code based on payment method
+            if (data.paymentMethod === 'upi') {
+                qrDisplay.classList.remove('hidden');
+
+                // Clear previous QR code
+                qrContainer.innerHTML = '';
+
+                // Generate new QR code
+                const upiID = '9585437294@ybl';
+                const payeeName = 'Jafar Fastfood';
+                const upiURL = `upi://pay?pa=${upiID}&pn=${encodeURIComponent(payeeName)}&am=${data.total.toFixed(2)}&cu=INR`;
+
+                new QRCode(qrContainer, {
+                    text: upiURL,
+                    width: 300,
+                    height: 300,
+                    colorDark: '#000000',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            } else {
+                qrDisplay.classList.add('hidden');
+            }
+        }
+
+        // Clear display when bill is confirmed
+        window.addEventListener('storage', function (e) {
+            if (e.key === 'clearCustomerDisplay' && e.newValue === 'true') {
+                const waitingSection = document.getElementById('waiting-section');
+                const billSection = document.getElementById('bill-section');
+
+                waitingSection.classList.remove('hidden');
+                billSection.classList.add('hidden');
+
+                localStorage.removeItem('clearCustomerDisplay');
+            }
+        });
+    </script>
+</body>
+
+</html>
