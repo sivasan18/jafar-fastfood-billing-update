@@ -953,13 +953,14 @@ class BillingApp {
 
     // ===== Reports Section =====
     setupReportsListeners() {
-        const reportType = document.getElementById('report-type');
+        const reportTypeSelect = document.getElementById('report-type');
+        const dateRangeGroup = document.getElementById('date-range-group');
         const generateBtn = document.getElementById('generate-report-btn');
         const exportBtn = document.getElementById('export-excel-btn');
-        const dateRangeGroup = document.getElementById('date-range-group');
+        const exportPdfBtn = document.getElementById('export-pdf-btn');
 
         // Show/hide date range based on report type
-        reportType.addEventListener('change', (e) => {
+        reportTypeSelect.addEventListener('change', (e) => {
             if (e.target.value === 'custom') {
                 dateRangeGroup.style.display = 'block';
             } else {
@@ -974,9 +975,19 @@ class BillingApp {
 
         generateBtn.addEventListener('click', () => this.generateReport());
         exportBtn.addEventListener('click', () => this.exportToExcel());
+        exportPdfBtn.addEventListener('click', () => this.exportToPDF());
+
+        // Email settings listeners
+        document.getElementById('save-email-config-btn').addEventListener('click', () => this.saveEmailConfig());
+        document.getElementById('send-weekly-report-btn').addEventListener('click', () => this.sendWeeklyReportNow());
+        document.getElementById('auto-send-toggle').addEventListener('change', (e) => this.toggleAutoSend(e.target.checked));
 
         // Hide date range initially
         dateRangeGroup.style.display = 'none';
+
+        // Load email config and initialize
+        this.loadEmailConfig();
+        this.initializeEmailAutomation();
     }
 
     generateReport() {
@@ -1133,6 +1144,248 @@ class BillingApp {
 
         // Save file
         XLSX.writeFile(wb, filename);
+    }
+
+    // ===== PDF Export =====
+    exportToPDF() {
+        if (!this.currentReportData) {
+            alert('Please generate a report first');
+            return;
+        }
+
+        const { bills, stats } = this.currentReportData;
+        const reportType = document.getElementById('report-type').value;
+
+        // Access jsPDF from window object
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        // Add title
+        doc.setFontSize(18);
+        doc.setFont(undefined, 'bold');
+        doc.text('Jafar Fastfood - Sales Report', 14, 20);
+
+        // Add report info
+        doc.setFontSize(11);
+        doc.setFont(undefined, 'normal');
+        doc.text(`Report Type: ${reportType.charAt(0).toUpperCase() + reportType.slice(1)}`, 14, 30);
+        doc.text(`Generated: ${new Date().toLocaleString('en-IN')}`, 14, 36);
+
+        // Add summary
+        doc.setFontSize(14);
+        doc.setFont(undefined, 'bold');
+        doc.text('Summary', 14, 46);
+
+        doc.setFontSize(11);
+        doc.setFont(undefined, 'normal');
+        doc.text(`Total Sales: ₹${stats.totalSales.toFixed(2)}`, 14, 54);
+        doc.text(`Total Bills: ${stats.totalBills}`, 14, 60);
+        doc.text(`Cash Sales: ₹${stats.cashSales.toFixed(2)}`, 14, 66);
+        doc.text(`UPI Sales: ₹${stats.upiSales.toFixed(2)}`, 14, 72);
+
+        // Add detailed table
+        const tableData = bills.map(bill => [
+            bill.date,
+            bill.id.toString(),
+            bill.items.map(item => `${item.name} (${item.quantity})`).join(', '),
+            bill.paymentMethod === 'upi' ? 'UPI' : 'Cash',
+            `₹${bill.total.toFixed(2)}`
+        ]);
+
+        doc.autoTable({
+            startY: 80,
+            head: [['Date', 'Bill No.', 'Items', 'Payment', 'Amount']],
+            body: tableData,
+            theme: 'striped',
+            headStyles: { fillColor: [102, 126, 234] },
+            styles: { fontSize: 9 },
+            columnStyles: {
+                2: { cellWidth: 60 }
+            }
+        });
+
+        // Save PDF
+        const filename = `Jafar_Fastfood_${reportType}_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+        doc.save(filename);
+    }
+
+    // ===== Email Configuration =====
+    loadEmailConfig() {
+        const config = localStorage.getItem('emailConfig');
+        if (config) {
+            const emailConfig = JSON.parse(config);
+            document.getElementById('email-recipient').value = emailConfig.recipient || 'sivar75@gmail.com';
+            document.getElementById('emailjs-service-id').value = emailConfig.serviceId || '';
+            document.getElementById('emailjs-template-id').value = emailConfig.templateId || '';
+            document.getElementById('emailjs-public-key').value = emailConfig.publicKey || '';
+            document.getElementById('auto-send-toggle').checked = emailConfig.autoSend || false;
+
+            // Update status displays
+            if (emailConfig.lastSent) {
+                document.getElementById('last-email-sent').textContent = new Date(emailConfig.lastSent).toLocaleString('en-IN');
+            }
+        }
+    }
+
+    saveEmailConfig() {
+        const config = {
+            recipient: document.getElementById('email-recipient').value,
+            serviceId: document.getElementById('emailjs-service-id').value,
+            templateId: document.getElementById('emailjs-template-id').value,
+            publicKey: document.getElementById('emailjs-public-key').value,
+            autoSend: document.getElementById('auto-send-toggle').checked,
+            lastSent: localStorage.getItem('emailConfig') ? JSON.parse(localStorage.getItem('emailConfig')).lastSent : null
+        };
+
+        localStorage.setItem('emailConfig', JSON.stringify(config));
+        this.showEmailNotification('Configuration saved successfully!', 'success');
+
+        // Initialize EmailJS with new config
+        if (config.publicKey) {
+            emailjs.init(config.publicKey);
+        }
+    }
+
+    // ===== Weekly Report Email =====
+    async sendWeeklyReportNow() {
+        const config = JSON.parse(localStorage.getItem('emailConfig') || '{}');
+
+        if (!config.serviceId || !config.templateId || !config.publicKey) {
+            this.showEmailNotification('Please configure EmailJS settings first!', 'error');
+            return;
+        }
+
+        // Generate weekly report data
+        const weeklyData = this.generateWeeklyReportData();
+
+        if (weeklyData.bills.length === 0) {
+            this.showEmailNotification('No sales data for the past week', 'error');
+            return;
+        }
+
+        // Format email content
+        const emailContent = this.formatEmailReport(weeklyData);
+
+        // Send email using EmailJS
+        try {
+            this.showEmailNotification('Sending email...', 'success');
+
+            await emailjs.send(config.serviceId, config.templateId, {
+                to_email: config.recipient,
+                subject: 'Jafar Fastfood - Weekly Sales Report',
+                report_period: emailContent.period,
+                total_sales: emailContent.totalSales,
+                total_bills: emailContent.totalBills,
+                cash_sales: emailContent.cashSales,
+                upi_sales: emailContent.upiSales,
+                detailed_report: emailContent.detailedReport
+            });
+
+            // Update last sent timestamp
+            config.lastSent = new Date().toISOString();
+            localStorage.setItem('emailConfig', JSON.stringify(config));
+            document.getElementById('last-email-sent').textContent = new Date().toLocaleString('en-IN');
+
+            this.showEmailNotification('Weekly report sent successfully! ✓', 'success');
+        } catch (error) {
+            console.error('Email send error:', error);
+            this.showEmailNotification('Failed to send email. Please check your EmailJS configuration.', 'error');
+        }
+    }
+
+    generateWeeklyReportData() {
+        const today = new Date();
+        const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+        const filteredBills = this.filterBillsByDateRange(weekAgo, today);
+        const stats = this.calculateStatistics(filteredBills);
+
+        return { bills: filteredBills, stats, startDate: weekAgo, endDate: today };
+    }
+
+    formatEmailReport(data) {
+        const { bills, stats, startDate, endDate } = data;
+
+        const period = `${startDate.toLocaleDateString('en-IN')} - ${endDate.toLocaleDateString('en-IN')}`;
+
+        // Create detailed report table
+        let detailedReport = bills.map((bill, index) =>
+            `${index + 1}. ${bill.date} | Bill #${bill.id} | ${bill.items.map(i => `${i.name} (${i.quantity})`).join(', ')} | ${bill.paymentMethod === 'upi' ? 'UPI' : 'Cash'} | ₹${bill.total.toFixed(2)}`
+        ).join('\n');
+
+        return {
+            period,
+            totalSales: `₹${stats.totalSales.toFixed(2)}`,
+            totalBills: stats.totalBills.toString(),
+            cashSales: `₹${stats.cashSales.toFixed(2)}`,
+            upiSales: `₹${stats.upiSales.toFixed(2)}`,
+            detailedReport: detailedReport || 'No transactions'
+        };
+    }
+
+    showEmailNotification(message, type) {
+        const notification = document.getElementById('email-notification');
+        notification.textContent = message;
+        notification.className = `email-notification ${type}`;
+
+        setTimeout(() => {
+            notification.classList.add('hidden');
+        }, 5000);
+    }
+
+    // ===== Automated Weekly Email =====
+    toggleAutoSend(enabled) {
+        const config = JSON.parse(localStorage.getItem('emailConfig') || '{}');
+        config.autoSend = enabled;
+        localStorage.setItem('emailConfig', JSON.stringify(config));
+
+        if (enabled) {
+            this.updateNextScheduled();
+            this.showEmailNotification('Automatic weekly reports enabled', 'success');
+        } else {
+            document.getElementById('next-email-scheduled').textContent = 'Not scheduled';
+            this.showEmailNotification('Automatic weekly reports disabled', 'success');
+        }
+    }
+
+    initializeEmailAutomation() {
+        const config = JSON.parse(localStorage.getItem('emailConfig') || '{}');
+
+        if (config.publicKey) {
+            emailjs.init(config.publicKey);
+        }
+
+        if (config.autoSend) {
+            this.updateNextScheduled();
+            // Check every hour if it's time to send
+            setInterval(() => this.checkAndSendWeeklyEmail(), 60 * 60 * 1000);
+        }
+    }
+
+    updateNextScheduled() {
+        const now = new Date();
+        const nextMonday = new Date(now);
+        nextMonday.setDate(now.getDate() + ((1 + 7 - now.getDay()) % 7 || 7));
+        nextMonday.setHours(9, 0, 0, 0);
+
+        document.getElementById('next-email-scheduled').textContent = nextMonday.toLocaleString('en-IN');
+    }
+
+    async checkAndSendWeeklyEmail() {
+        const config = JSON.parse(localStorage.getItem('emailConfig') || '{}');
+
+        if (!config.autoSend) return;
+
+        const now = new Date();
+        const lastSent = config.lastSent ? new Date(config.lastSent) : null;
+
+        // Check if it's Monday and 9 AM
+        if (now.getDay() === 1 && now.getHours() === 9) {
+            // Check if we haven't sent today
+            if (!lastSent || lastSent.toDateString() !== now.toDateString()) {
+                await this.sendWeeklyReportNow();
+            }
+        }
     }
 }
 

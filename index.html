@@ -8,6 +8,8 @@
     <meta name="description" content="Simple and visual restaurant billing system with image-based menu selection">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="reports-styles.css">
+    <!-- EmailJS SDK -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <!-- QR Code Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
@@ -235,7 +237,67 @@
                     <div class="filter-actions">
                         <button id="generate-report-btn" class="btn btn-primary">📊 Generate Report</button>
                         <button id="export-excel-btn" class="btn btn-secondary">📥 Export to Excel</button>
+                        <button id="export-pdf-btn" class="btn btn-secondary">📄 Export to PDF</button>
                     </div>
+                </div>
+
+                <!-- Email Settings Section -->
+                <div class="email-settings-section">
+                    <h3>📧 Weekly Email Reports</h3>
+                    <p class="email-description">Automatically send weekly sales reports to your email</p>
+
+                    <div class="email-config-grid">
+                        <div class="form-group">
+                            <label for="email-recipient">📬 Recipient Email</label>
+                            <input type="email" id="email-recipient" class="email-input" placeholder="your@email.com"
+                                value="sivar75@gmail.com">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="emailjs-service-id">🔑 EmailJS Service ID</label>
+                            <input type="text" id="emailjs-service-id" class="email-input"
+                                placeholder="service_xxxxxxx">
+                            <small>Get this from <a href="https://www.emailjs.com/" target="_blank">EmailJS
+                                    Dashboard</a></small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="emailjs-template-id">📝 EmailJS Template ID</label>
+                            <input type="text" id="emailjs-template-id" class="email-input"
+                                placeholder="template_xxxxxxx">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="emailjs-public-key">🔐 EmailJS Public Key</label>
+                            <input type="text" id="emailjs-public-key" class="email-input"
+                                placeholder="Your public key">
+                        </div>
+                    </div>
+
+                    <div class="email-actions">
+                        <button id="save-email-config-btn" class="btn btn-secondary">💾 Save Configuration</button>
+                        <button id="send-weekly-report-btn" class="btn btn-primary">📨 Send Weekly Report Now</button>
+                    </div>
+
+                    <div class="email-automation">
+                        <label class="toggle-label">
+                            <input type="checkbox" id="auto-send-toggle">
+                            <span class="toggle-text">🔄 Enable Automatic Weekly Reports (Every Monday 9:00 AM)</span>
+                        </label>
+                    </div>
+
+                    <div class="email-status">
+                        <div class="status-item">
+                            <span class="status-label">Last Sent:</span>
+                            <span id="last-email-sent" class="status-value">Never</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Next Scheduled:</span>
+                            <span id="next-email-scheduled" class="status-value">Not scheduled</span>
+                        </div>
+                    </div>
+
+                    <div id="email-notification" class="email-notification hidden"></div>
                 </div>
 
                 <!-- Report Summary -->
@@ -306,6 +368,9 @@
         <!-- Bill content for printing -->
     </div>
 
+    <!-- jsPDF Library for PDF Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <!-- SheetJS Library for Excel Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="app.js"></script>
